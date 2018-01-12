@@ -5,12 +5,13 @@ using UnityEngine;
 public class MapGenerator : MonoBehaviour {
 
 	[Range(0, 100)]
-	public int randomFillPercent;
+	public int randomFillPercent = 45;
+	public int smoothIterations = 5;
+	public int smoothWallCount = 4;
+	public int width = 60;
+	public int height = 80;
 
-	public int width;
-	public int height;
-
-	public string seed;
+	public string seed = "Waleed";
 	public bool useRandomSeed;
 	int[,] map;
 
@@ -19,11 +20,22 @@ public class MapGenerator : MonoBehaviour {
 		GenerateMap();
 	}
 
+	private void Update()
+	{
+		if(Input.GetMouseButtonDown(0))
+			GenerateMap();
+	}
+
 	private void GenerateMap()
 	{
 		map = new int[width, height];
 
 		RandomFillMap();
+
+		for (int i = 0; i < smoothIterations; i++)
+		{
+			SmoothMap();
+		}
 	}
 
 	private void RandomFillMap()
@@ -37,11 +49,58 @@ public class MapGenerator : MonoBehaviour {
 		{
 			for (int y = 0; y < height; y++)
 			{
-				map[x, y] = (pseudoRandom.Next(0, 100) < randomFillPercent)? 0: 1;
+				if(x == 0 || x == width-1 || y == 0 || y == height-1)
+					map[x, y] = 1;
+				else
+					map[x, y] = (pseudoRandom.Next(0, 100) < randomFillPercent)? 1: 0;
 			}
 		}
 	}
 
+	private void SmoothMap()
+	{
+		for (int x = 0; x < width; x++)
+		{
+			for (int y = 0; y < height; y++)
+			{
+				int neighbours = GetSurroundingWallCount(x, y);
+
+				if(neighbours > smoothWallCount)
+				{
+					map[x, y] = 1;
+				}
+				else if (neighbours < smoothWallCount)
+				{
+					map[x, y] = 0;
+				}
+			}
+		}
+	}
+	
+	private int GetSurroundingWallCount(int x, int y)
+	{
+		int wallCount = 0;
+
+		for(int neighbourX = x - 1; neighbourX <= x + 1; neighbourX ++)
+		{
+			for(int neighbourY = y-1; neighbourY <= y +1; neighbourY ++)
+			{
+				if(neighbourX >= 0 && neighbourX < width && neighbourY >= 0 && neighbourY < height)
+				{
+					if(neighbourX != x || neighbourY != y)
+					{
+						wallCount += map[neighbourX, neighbourY];
+					}
+				}
+				else
+				{
+					wallCount ++;
+				}
+			}
+		}
+
+		return wallCount;
+	}
 	private void OnDrawGizmos()
 	{
 		if(map == null)

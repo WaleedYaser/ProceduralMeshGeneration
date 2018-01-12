@@ -140,9 +140,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 023bd72413542314e9364f537f6ce7a8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  randomFillPercent: 75
-  width: 60
-  height: 80
+  randomFillPercent: 45
+  smoothIterations: 5
+  smoothWallCount: 4
+  width: 128
+  height: 72
   seed: waleed
   useRandomSeed: 1
 --- !u!4 &984429736
