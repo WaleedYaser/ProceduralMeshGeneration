@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class MeshGenerator : MonoBehaviour {
 
+
 	public class Node
 	{
 		public Vector3 position;
@@ -33,6 +34,7 @@ public class MeshGenerator : MonoBehaviour {
 	{
 		public ControlNode topLeft, topRight, buttomRight, buttomLeft;
 		public Node centerTop, centerRight, centerButtom, centerLeft;
+		public int configuration;
 
 		public Square(ControlNode topLeft, ControlNode topRight, ControlNode buttomRight, ControlNode buttomLeft)
 		{
@@ -45,6 +47,11 @@ public class MeshGenerator : MonoBehaviour {
 			centerRight = this.buttomRight.above;
 			centerButtom = this.buttomLeft.right;
 			centerLeft = this.buttomLeft.above;
+
+			if (topLeft.active) configuration += 8;
+			if (topRight.active) configuration += 4;
+			if (buttomRight.active) configuration += 2;
+			if(buttomLeft.active) configuration += 1;
 		}
 	}
 
@@ -84,39 +91,159 @@ public class MeshGenerator : MonoBehaviour {
 	}
 
 	public SquareGrid squareGrid;
+	public List<Vector3> vertices;
+	public List<int> triangles;
 
 	public void GenerateMesh(int[,] map, float squareSize)
 	{
 		squareGrid = new SquareGrid(map, squareSize);
+
+		for (int x = 0; x < squareGrid.squares.GetLength(0); x++)
+		{
+			for (int y = 0; y < squareGrid.squares.GetLength(1); y++)
+			{
+				TriangulateSquare(squareGrid.squares[x, y]);
+			}
+		}
+
+		Mesh mesh = new Mesh();
+		mesh.vertices = vertices.ToArray();
+		mesh.triangles = triangles.ToArray();
+		mesh.RecalculateNormals();
+
+		GetComponent<MeshFilter>().mesh = mesh;
+
+	}
+	
+	private void TriangulateSquare(Square square)
+	{
+		switch(square.configuration)
+		{
+			case 0:
+			break;
+
+			// 1 point
+			case 1: // 0001
+			MeshFromPoints(square.centerButtom, square.buttomLeft, square.centerLeft);
+			break;
+
+			case 2: // 0010
+			MeshFromPoints(square.centerRight, square.buttomRight, square.centerButtom);
+			break;
+
+			case 4: // 0100
+			MeshFromPoints(square.centerTop, square.topRight, square.centerRight);
+			break;
+
+			case 8: // 1000
+			MeshFromPoints(square.topLeft, square.centerTop, square.centerLeft);
+			break;
+
+			// 2 points
+			case 3: // 0011
+			MeshFromPoints(square.centerRight, square.buttomRight, square.buttomLeft, square.centerLeft);
+			break;
+
+			case 5: // 0101
+			MeshFromPoints(square.centerTop, square.topRight, square.centerRight, square.centerButtom, square.buttomLeft, square.centerLeft);
+			break;
+
+			case 6: // 0110
+			MeshFromPoints(square.centerTop, square.topRight, square.buttomRight,square.centerButtom);
+			break;
+
+			case 9: // 1001
+			MeshFromPoints(square.topLeft, square.centerTop, square.centerButtom, square.buttomLeft);
+			break;
+
+			case 10: // 1010
+			MeshFromPoints(square.topLeft, square.centerTop, square.centerRight, square.buttomRight, square.centerButtom, square.centerLeft);
+			break;
+
+			case 12:
+			MeshFromPoints(square.topLeft, square.topRight, square.centerRight, square.centerLeft);	
+			break;
+
+			// 3 points
+			case 7: // 0111
+			MeshFromPoints(square.centerTop, square.topRight, square.buttomRight, square.buttomLeft, square.centerLeft);	
+			break;
+
+			case 11:// 1011
+			MeshFromPoints(square.topLeft, square.centerTop, square.centerRight, square.buttomRight, square.buttomLeft);
+			break;
+
+			case 13: // 1101
+			MeshFromPoints(square.topLeft, square.topRight, square.centerRight, square.centerButtom, square.buttomLeft);
+			break;
+
+			case 14: // 1110
+			MeshFromPoints(square.topLeft, square.topRight, square.buttomRight, square.centerButtom, square.centerLeft);
+			break;
+
+			// 4 points
+			case 15: // 1111
+			MeshFromPoints(square.topLeft, square.topRight, square.buttomRight, square.buttomLeft);
+			break;
+		}	
+	}
+
+	private void MeshFromPoints(params Node[] points)
+	{
+		AssignVertices(points);
+
+		if(points.Length >= 3) CreateTriangle(points[0], points[1], points[2]);
+		if(points.Length >= 4) CreateTriangle(points[0], points[2], points[3]);
+		if(points.Length >= 5) CreateTriangle(points[0], points[3], points[4]);
+		if(points.Length >= 6) CreateTriangle(points[0], points[4], points[5]);
+	}
+
+	private void AssignVertices(Node[] points)
+	{
+		for (int i = 0; i < points.Length; i++)
+		{
+			if(points[i].vertexIndex == -1)
+			{
+				points[i].vertexIndex = vertices.Count;
+				vertices.Add(points[i].position);
+			}
+		}
+	}
+
+	private void CreateTriangle(Node a, Node b, Node c)
+	{
+		triangles.Add(a.vertexIndex);
+		triangles.Add(b.vertexIndex);
+		triangles.Add(c.vertexIndex);
 	}
 
 	private void OnDrawGizmos()
 	{
-		if(squareGrid != null)
-		{
-			for (int x = 0; x < squareGrid.squares.GetLength(0); x++)
-			{
-				for (int y = 0; y < squareGrid.squares.GetLength(1); y++)
-				{
-					Gizmos.color = (squareGrid.squares[x, y].topLeft.active)? Color.black: Color.white;
-					Gizmos.DrawCube(squareGrid.squares[x, y].topLeft.position, Vector3.one * 0.4f);
+		// if(squareGrid != null)
+		// {
+		// 	for (int x = 0; x < squareGrid.squares.GetLength(0); x++)
+		// 	{
+		// 		for (int y = 0; y < squareGrid.squares.GetLength(1); y++)
+		// 		{
+		// 			Gizmos.color = (squareGrid.squares[x, y].topLeft.active)? Color.black: Color.white;
+		// 			Gizmos.DrawCube(squareGrid.squares[x, y].topLeft.position, Vector3.one * 0.4f);
 
-					Gizmos.color = (squareGrid.squares[x, y].topRight.active)? Color.black: Color.white;
-					Gizmos.DrawCube(squareGrid.squares[x, y].topRight.position, Vector3.one * 0.4f);
+		// 			Gizmos.color = (squareGrid.squares[x, y].topRight.active)? Color.black: Color.white;
+		// 			Gizmos.DrawCube(squareGrid.squares[x, y].topRight.position, Vector3.one * 0.4f);
 
-					Gizmos.color = (squareGrid.squares[x, y].buttomRight.active)? Color.black: Color.white;
-					Gizmos.DrawCube(squareGrid.squares[x, y].buttomRight.position, Vector3.one * 0.4f);
+		// 			Gizmos.color = (squareGrid.squares[x, y].buttomRight.active)? Color.black: Color.white;
+		// 			Gizmos.DrawCube(squareGrid.squares[x, y].buttomRight.position, Vector3.one * 0.4f);
 
-					Gizmos.color = (squareGrid.squares[x, y].buttomLeft.active)? Color.black: Color.white;
-					Gizmos.DrawCube(squareGrid.squares[x, y].buttomLeft.position, Vector3.one * 0.4f);
+		// 			Gizmos.color = (squareGrid.squares[x, y].buttomLeft.active)? Color.black: Color.white;
+		// 			Gizmos.DrawCube(squareGrid.squares[x, y].buttomLeft.position, Vector3.one * 0.4f);
 
-					Gizmos.color = Color.gray;
-					Gizmos.DrawCube(squareGrid.squares[x, y].centerTop.position, Vector3.one * 0.15f);
-					Gizmos.DrawCube(squareGrid.squares[x, y].centerRight.position, Vector3.one * 0.15f);
-					Gizmos.DrawCube(squareGrid.squares[x, y].centerButtom.position, Vector3.one * 0.15f);
-					Gizmos.DrawCube(squareGrid.squares[x, y].centerLeft.position, Vector3.one * 0.15f);
-				}
-			}
-		}
+		// 			Gizmos.color = Color.gray;
+		// 			Gizmos.DrawCube(squareGrid.squares[x, y].centerTop.position, Vector3.one * 0.15f);
+		// 			Gizmos.DrawCube(squareGrid.squares[x, y].centerRight.position, Vector3.one * 0.15f);
+		// 			Gizmos.DrawCube(squareGrid.squares[x, y].centerButtom.position, Vector3.one * 0.15f);
+		// 			Gizmos.DrawCube(squareGrid.squares[x, y].centerLeft.position, Vector3.one * 0.15f);
+		// 		}
+		// 	}
+		// }
 	}
 }
